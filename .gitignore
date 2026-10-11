@@ -1,0 +1,13 @@
+# Visual Studio / IDE files
+.vs/
+*.user
+*.suo
+*.cache
+
+# Convereted fiels and binaries
+bin/
+obj/
+
+# Databases
+*.db
+*.db-journal
