@@ -1,0 +1,27 @@
+Structured data search and LINQ to XML, XDocument,
+hierachial structure management:
+	- Hierachial tree structures: XML is not just string of chracters. It forms
+	  tree like structure. It has elements inside elements like Envelope -> Body
+	  -> GetProductsResponse -> Products -> Product.
+
+	- XDocument and Descendants on other hand makes it so that I dont need to
+	  write complex loops to move from one loop to other. Using LINQ to XML library's
+	  descendants method which automatically searches all especifically named elements
+	  regardless of how deep in XML tree they are living in. This is very powerful tool,
+	  when we have to pick from massive integration text just some specific information.
+
+Namespaces, XNamespace, their meaning and management in SOAP-architecture
+	- I learned one of most critical SOAP-world's rule. Why namespaces exist?
+	  In integrations and web services, XML-documents can combine different elements
+	  from different systems. Name spaces such as xmlns="[http://tempuri.org/]
+	  (http://tempuri.org/)" ensure that element name Product, is not mixed with some
+	  other system's similarly named element.
+	  
+	- I learned that C# does not find elements purely based on strings like "Product"
+	  if document has only namespace defined. 
+	  By creating XNamespace ns ="[http://tempuri.org/](http://tempuri.org/)"; and
+	  combining it to element name (ns + "Product"), I tell program exactly in which
+	  system that product is searched in.
+
+Defensive programming and null-safety
+	- 
