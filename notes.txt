@@ -24,4 +24,19 @@ Namespaces, XNamespace, their meaning and management in SOAP-architecture
 	  system that product is searched in.
 
 Defensive programming and null-safety
-	- 
+	- In real life integrations, SOAP-responses are not always in correct format.
+	  Some field may be missing or API-provider has changed schema without notifying.
+	  Null check operator ?. checks is XML-field is not at all found for specific
+	  product. This way if it is missing, program does not crash to NullReference-
+	  Exception error, but returns safety null-value. This makes code professional
+	  and uses best practices. It makes code long lasting and produdction ready.
+	  Businesses use this in daily basis; they take in external, often complex and
+	  with namespaces protected SOAP/XML-message. They parse message to C# memory
+	  using LINQ to XML-tool safely and conretely. 
+
+SMSS connectivity:
+	- For C# to connect to SMSS, I need to install following:
+	dotnet add package Microsoft.Data.SqlClient
+	dotnet add package Microsoft.Extensions.Configuration
+	dotnet add package Microsoft.Extensions.Configuration.Json
+	dotnet add package Microsoft.Extensions.Configuration.Binder
