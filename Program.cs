@@ -29,8 +29,15 @@ class Program
             Console.WriteLine("Connection to SQL server was successful using appsettings.json!");
 
 
-            string createTableSql = @"IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Products BEGIN CREATE TABLE Products (Id INT, Name NVARCHAR(100), Price INT); END";
-        
+            string createTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Products')
+                BEGIN
+                    CREATE TABLE Products (
+                        Id INT,
+                        Name NVARCHAR(100),
+                        Price INT
+                    );
+                END";
             using (var createCommand = new SqlCommand(createTableSql, connection))
             {
                 createCommand.ExecuteNonQuery();
