@@ -1,7 +1,6 @@
-﻿using System;
-using System.Xml.Linq;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using System.Xml.Linq;
 
 class Program
 {
@@ -33,7 +32,7 @@ class Program
                 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Products')
                 BEGIN
                     CREATE TABLE Products (
-                        Id INT,
+                        Id INT PRIMARY KEY,
                         Name NVARCHAR(100),
                         Price INT
                     );
@@ -42,7 +41,7 @@ class Program
             {
                 createCommand.ExecuteNonQuery();
             }
-                   
+
             // Parsing and saving
 
             // Loads XML-file to memory
@@ -54,29 +53,47 @@ class Program
             // Searches for all <Product>-elements by namespace reference
             var products = doc.Descendants(ns + "Product");
 
-            string insertSql = "INSERT INTO Products (Id, Name, Price) VALUES (@id, @name, @price);";
+            string insertSql = "MERGE INTO Products AS target USING (VALUES (@id, @name, @price)) AS " +
+                "source (Id, Name, Price) ON target.Id = source.Id WHEN MATCHED THEN UPDATE SET " +
+                "target.Name = source.Name, target.Price = source.Price WHEN NOT MATCHED THEN " +
+                "INSERT (Id, Name, Price) VALUES (source.Id, source.Name, source.Price);";
 
             Console.WriteLine("Parsing products from SOAP-response:\n");
 
-            foreach (var p in products)
+            using (var transaction = connection.BeginTransaction())
             {
-                if (int.TryParse(p.Element(ns + "Id")?.Value, out int id) &&
-                    int.TryParse(p.Element(ns + "Price")?.Value, out int price))
+                try
                 {
-                    string name = p.Element(ns + "Name")?.Value;
-
-                    using (var insertCommand = new SqlCommand(insertSql, connection))
+                    foreach (var p in products)
                     {
-                        insertCommand.Parameters.AddWithValue("@id", id);
-                        insertCommand.Parameters.AddWithValue("@name", name ?? (object)DBNull.Value);
-                        insertCommand.Parameters.AddWithValue("@price", price);
-                        insertCommand.ExecuteNonQuery();
-                    }
-                    Console.WriteLine($"ID: {id}, Nimi: {name}, Hinta: {price} €");
-                }
+                        if (int.TryParse(p.Element(ns + "Id")?.Value, out int id) &&
+                            int.TryParse(p.Element(ns + "Price")?.Value, out int price))
+                        {
+                            string name = p.Element(ns + "Name")?.Value;
 
-                
+                            using (var insertCommand = new SqlCommand(insertSql, connection))
+                            {
+                                insertCommand.Parameters.AddWithValue("@id", id);
+                                insertCommand.Parameters.AddWithValue("@name", name ?? (object)DBNull.Value);
+                                insertCommand.Parameters.AddWithValue("@price", price);
+                                insertCommand.ExecuteNonQuery();
+                            }
+                            Console.WriteLine($"ID: {id}, Nimi: {name}, Hinta: {price} €");
+                        }
+
+
+                    }
+                    transaction.Commit();
+                    Console.WriteLine("\n All products are saved succesfully in transaction!");
+                }
+                catch (Exception ex)
+                {
+                    // If something went wrong, rollback all changes at once!
+                    transaction.Rollback();
+                    Console.WriteLine($"\nError during saving process, all changes are rolled back: {ex.Message}");
+                }
             }
         }
     }
 }
+        

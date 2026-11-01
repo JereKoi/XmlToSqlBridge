@@ -40,3 +40,43 @@ SMSS connectivity:
 	dotnet add package Microsoft.Extensions.Configuration
 	dotnet add package Microsoft.Extensions.Configuration.Json
 	dotnet add package Microsoft.Extensions.Configuration.Binder
+
+Primary Key:
+	- Primary key is unique and it makes sure that each row is always unique. Not any other
+	  row can share same primary key (perusavain). For example two products cannot have same ID-
+	  number. Primary key field cannot be never null. Each row has to be active identifier.
+	  Primary key upholds data integrity. Primary key works as last defence. If program or 
+	  integration tries to accidentally save existing info again, database stops it
+	  automatically, such as Violation of primary key-error. Primary key also improves
+	  speed of queries. Database creates automatic indexing around primary key, which 
+	  makes searching for data, updating and deleting with specific ID very fast especially when
+	  table has millions of rows.
+
+Why duplicate rows are issue?
+	- Data goes wrong, wrong raports and calculations. If database has two copies of same product,
+	  all statistics and calculations goes wrong. For example warehourse price as whole or product
+	  amount shows way too high number.
+
+Business fail and catasthrophies, operational errors:
+	- In integrations and webshops, duplicates can in worst scenarion cause situation where
+	  customer gets two products, customer is billed twice or system thinks, that there are
+	  more than one order. Some tables which have two rows, but data has been updated
+	  such as price has been updated, database does not know which row is the right one
+	  (single source of truth). Duplicate rows also cause unnecessary resource consumption.
+	  Even though hard disks are cheap and in million class system unnecessary duplicate rows
+	  cause turbulance in database, which causes queries to be slower and make friction on
+	  server's memory. This is why databases have always strict rules, like those PRIMARY KEY,
+	  which works as automatic bouncer and stops faulty data to get into party.
+
+Error handling and logging:
+	- Try catch block is useful to catch exceptions and errors. Catch block is used to prevent
+	  program to not crash if something goes wrong. Logging is used to write what went wrong and when.
+
+Upsert and Merge:
+	- Smart data management. Instead of system only adding rows blindly or crash to duplicates,
+	  MERGE-clause can check situation on fly and decide itself if it needs to use INSERT or
+	  if there is existing row and use UPDATE instead. Solely skipping duplicates would leave
+	  old info to live on database. Upsert-model ensures, that for example product price changes
+	  on SOAP API, also database price changes automatically to correct one. Integration reapplicability.
+	  When database and SQL-clause sort duplicate issue and updates smartly, same integration job can
+	  be ran again and again safely without errors or data corruption.
