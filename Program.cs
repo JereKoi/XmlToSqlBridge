@@ -66,13 +66,33 @@ class Program
                 {
                     foreach (var p in products)
                     {
-                        if (int.TryParse(p.Element(ns + "Id")?.Value, out int id) &&
-                            int.TryParse(p.Element(ns + "Price")?.Value, out int price))
+                        // Checking if Id is existing and valid
+                        var idElement = p.Element(ns + "Id");
+                        var priceElement = p.Element(ns + "Price");
+                        var nameElement = p.Element(ns + "Name");
+
+                        // If Id is missing or is not number, throwing exception to trigger
+                        // rollback of transcation.
+                        if (idElement == null || !int.TryParse(idElement.Value, out int id))
                         {
-                            string name = p.Element(ns + "Name")?.Value;
+                            throw new Exception($"Error: Product is missing required id " +
+                                $"or id is faulty!");
+                        }
+
+                        if (priceElement == null || !int.TryParse(priceElement.Value, out int price))
+                        {
+                            throw new Exception($"Error: Product {id} has faulty or missing price!");
+                        }
+                        if (nameElement == null || string.IsNullOrWhiteSpace(nameElement.Value))
+                        {
+                            throw new Exception($"Error: Product {id} has faulty or missing name!");
+                        }
+
+                        string? name = nameElement?.Value;
 
                             using (var insertCommand = new SqlCommand(insertSql, connection))
                             {
+                                // Ties the commmand to transaction.
                                 insertCommand.Transaction = transaction;
                                 insertCommand.Parameters.AddWithValue("@id", id);
                                 insertCommand.Parameters.AddWithValue("@name", name ?? (object)DBNull.Value);
@@ -81,9 +101,6 @@ class Program
                             }
                             Console.WriteLine($"ID: {id}, Nimi: {name}, Hinta: {price} €");
                         }
-
-
-                    }
                     transaction.Commit();
                     Console.WriteLine("\n All products are saved succesfully in transaction!");
                 }

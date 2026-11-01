@@ -115,3 +115,23 @@ I deleted necessary info from mock SOAP response, but transcation did not rollba
 	  as Id, does program raise alert, throw new exception or rollback whole batch run? I will
 	  go with option B, because in enterprise integrations it is used to build quality and 
 	  trustworty processing.
+
+What I learned after adding transaction triggering exceptions to code?
+	- Adding strict validation (fail fast) to code, instead of my program silently skips
+	  ahead when faulty SOAP-response has product that is missing id or whatnot, it immediatly
+	  throws exception and catch-block is activated to rollback whole operation. Errors
+	  are needed to be known immediatly, so that it is easy to react to them so that faulty
+	  data does not spread to database. Atonomic and safety nets (All or nothing). Transaction
+	  makes sure that database remains intact. Either all batch data has gone through succesfully
+	  (Commit) or even if one product is faulty, all changes are rolledback. Database is never left
+	  in half-baked state or messy state. Transactions makes sure that error processing is structured 
+	  and safe. When code gets to exception, catch block reacts to this and acts as safety net for
+	  database, making sure that data remains intact and leaves to humans log message to react to when
+	  something goes wrong.
+
+Commit:
+	- Commit means tranasction ending. When program calls transaction.Commit(); it tells database:
+	  "All batch products were handled succesfully without any errors. You can now save all changes
+	  (additions and updates) entirely to database." Commit () = Accept and save all changes
+	  (when everything went alright). Rollback() = Rollback everything (when something went wrong,
+	  so that database is not left in half-baked state/some data saved, some data missing).
