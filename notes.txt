@@ -80,3 +80,38 @@ Upsert and Merge:
 	  on SOAP API, also database price changes automatically to correct one. Integration reapplicability.
 	  When database and SQL-clause sort duplicate issue and updates smartly, same integration job can
 	  be ran again and again safely without errors or data corruption.
+
+Transactions and rollback:
+	- Lets think of situation where SOAP-API sends me at once 100 products and my program starts
+	  to save them from list one by one to database. Products 1-49 saving is succesfull. On
+	  product 50 is some unexpected error, for example required data is missing or database connectino
+	  cuts of momentarily. Without transaction, producst 1-49 would be on database, but rest of 50
+	  products end up missing from database. Database is now halfway (half-baked), data is inconsistent.
+	  Transaction being all or nothing, either all 100 products are saved succesfully (commit) or
+	  even one faulty saving results into error, database rolls back all and not even one
+	  data is changed on database. Database remains intact.
+
+How to use transcations in code?
+	- In Microsoft.Data.SqlClient-library transaction is started straight away from opening the connection
+	  (connection.BeginTransaction()) and it is tied to commands. BeginTransaction is the batch (job).
+
+I deleted necessary info from mock SOAP response, but transcation did not rollback. Why?
+	- I did negative test, so deleting necessary info from SOAP-response to see if rollback works.
+	  Reason why transaction did not go to error and catch-block didnt activate despite deleting Id
+	  and Name from one of products on SOAP-response. Reason lies on these two lines;
+	  if (int.TryParse(p.Element(ns + "Id")?.Value, out int id) &&
+		int.TryParse(p.Element(ns + "Price")?.Value, out int price))
+	  When I deleted Id from SOAP-response, p.Element(ns + "Id")?.Value returned null.
+	  int.TryParse(null, out int id) returned false. In human communication it said: "Hey
+	  this is not valid whole number"). Because if statement returned false, whole block's
+	  code including database command was not performed at all. Program only skipped that
+	  specific product unnoticed and went through rest of them in loop and performed
+	  transaction.Commit(); to the end. Because faulty data was not even attempted to be
+	  saved to database, no exception happened. This raises architectural question,
+	  Is it right if SOAP-response is missing data, program only skips product and
+	  continues. Maybe sometimes this is on purpose, but often dangerous as errors or missing
+	  information was missing without anybody noticing it. Option B strict validation after fail.
+	  With option B question is that do I want so that product is missing some critical data such
+	  as Id, does program raise alert, throw new exception or rollback whole batch run? I will
+	  go with option B, because in enterprise integrations it is used to build quality and 
+	  trustworty processing.

@@ -73,6 +73,7 @@ class Program
 
                             using (var insertCommand = new SqlCommand(insertSql, connection))
                             {
+                                insertCommand.Transaction = transaction;
                                 insertCommand.Parameters.AddWithValue("@id", id);
                                 insertCommand.Parameters.AddWithValue("@name", name ?? (object)DBNull.Value);
                                 insertCommand.Parameters.AddWithValue("@price", price);
