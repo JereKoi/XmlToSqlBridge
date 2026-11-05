@@ -135,3 +135,49 @@ Commit:
 	  (additions and updates) entirely to database." Commit () = Accept and save all changes
 	  (when everything went alright). Rollback() = Rollback everything (when something went wrong,
 	  so that database is not left in half-baked state/some data saved, some data missing).
+
+Better logging:
+	- Why Console.WriteLine does not cut it? When program is ran on background, for example
+	  running on a scheduled job stream every hour, nobody sits looking at console-window. If
+	  something goes wrong, data vanishes. In real system, there should be left permanent mark of
+	  when and what happened, who did it and where data was handled. Instead of simple text,
+	  it is better to save data as object (for example product ID as separate field), when logs
+	  are easier to filter and browse later on. I will use Serilog for this project.
+
+What is Serilog:
+	- Serilog is popular and extremely efficient logging library in .NET world (C#, F# etc).
+	  It's main idea and biggest advantage is structured logging. Traditional way of logging
+	  would be pure strings: Console.WriteLine($"User {userId} made a mistake with product {productId}).
+	  Computer and log programs only see this as one long text. With Serilog, Data is saved in
+	  structured format with for example JSON in background. Then user Id and product Id is their own
+	  seperate fields. You can later easily search and filter log system; show all errors where productId
+	  was 101. Is it generally used? Yes and it is extremely popular. Serilog is basically a standard
+	  way of logging, de facto standard part of .NET ecosystem. Together with Microsoft's inbuilt 
+	  log system, Serilog is one of the most downloaded and used libraries in the world. It is used
+	  daily everywhere from micro services to enterprise cloudsystems. 
+	  
+Why it is so popular:
+	- Sinks. Serilog has ready made addons so called sinks for almost any use and purpose. You can
+	  direct same logs with one command into console, file, database, to cloud service such as
+	  Azure Application Insights, AWS CloudWatch, Datadog) or more sophisticated log services such as
+	  Seq or Elasticsearch. Serilog is also popular due to its easy integrability to Microsoft systems.
+	  It works seamlessly with .NET's own ILogger-API, which makes it easy to use with modern ASP.NET Core
+	  softwares as well. Performance is as well secret for popularity, Serilog is designed to withold
+	  strong stress without it slowing down the main product/software. With learning Serilog, I am learning
+	  a skill, which is needed in almost every professional C#-project in future.
+
+I noticed Serilog working on console, but it didn't write anything to file, why?
+	- This is classic first fail when taking serilog to use first time. It could be that
+	  console application closes so fast that Serilog did not have time to write logs that were on
+	  the memory to hard disk. Another reason is that Serilog needs one important command at the end
+	  of program so that Serilog empties memory and closes program safely: Log.CloseAndFlush();
+	  This row needs to be the very last one at the end of Main method. Also log files are created to
+	  bin folder.
+
+What if I run program more than once on same day, would it overwrite log file:
+	- Serilog is designed so that if I run program on same day, Serilog notices that on that specific
+	  day log file that carries that day's name already. Serilog does not empty it or replace is, but
+	  instead it opens it and writes new log rows straight under neath the old logs. Instantly when day
+	  switches at midnight and I start program next time, Serilog creates automatically new file with
+	  that day's name as filename. Old logs stay safely in their own files. This is how during the same
+	  day driven tests and jobs get saved neatly to same file in time order and no file disappears.
