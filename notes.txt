@@ -181,3 +181,35 @@ What if I run program more than once on same day, would it overwrite log file:
 	  switches at midnight and I start program next time, Serilog creates automatically new file with
 	  that day's name as filename. Old logs stay safely in their own files. This is how during the same
 	  day driven tests and jobs get saved neatly to same file in time order and no file disappears.
+
+What is async/await?
+	- It means transitioning from syncronous database queries ExecuteNonQuery to asyncronous calls
+	  ExecuteNonQueryAsync. Why this is important? In enterprise systems, database calls and SOAP-
+	  web requests take time. async/await ensures that program does not stay long period of time waiting
+	  for a response, but frees resources efficiently for handling other tasks.
+	  Asyncronous can be thought as an restaurant. My old synchronous code is like going to restaurant
+	  counter to order. After ordering, on counter, employee starts to prepare meal and I stay there
+	  watching and do nothing until food is ready. Nobody else can order because I stay there and cashier
+	  cannot do it's job. This is not ideal way and not efficient.
+	  Asnycronous way (async/await): When I go order, I get on my hand an blinking alert and I say
+	  at counter: "ring counter when food is ready". Meanwhile I sit down and drink water and do
+	  other things. Alert rings and I go pick my food. SQL query calls and API calls such as SOAP
+	  calls are all similar "waiting" situations. Database takes a little time to handle MERGE-clauses.
+	  In synchronous code, program will stay waiting for answer. Asyncronous code frees computers
+	  resources to do something else meanwhile.
+
+How async looks like in code?
+	- Asyncronous has three magic words:
+	  async: Telling method that here are going to be used await.
+	  Task: return type. Void changes into Task and Main method becomes async Task Main.
+	  await: Commanc that says: "Wait that this database call is ready, but free up a thread to do
+	  something else meanwhile".
+	  In theory, database commands become Async like this:
+	  connection.Open() -> await connection.OpenAsync()
+	  insertCommand.ExecuteNonQuery() -> await insertCommand.ExecuteNonQueryAsync()
+
+How async works?
+	- 
+
+How await works?
+	- 
