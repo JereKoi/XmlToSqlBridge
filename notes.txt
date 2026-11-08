@@ -209,7 +209,29 @@ How async looks like in code?
 	  insertCommand.ExecuteNonQuery() -> await insertCommand.ExecuteNonQueryAsync()
 
 How async works?
-	- 
+	- When I add word async in from of method, I tell C#-converter two things. Allow await word usage.
+	  Thanks to this word, method is allowed to use await commands. If async is missing, C# converter
+	  will give error when I try to use await command. Second is that it allows to build state machine
+	  underneath the hood. Converter changes my method behind curtains to smart structure, which
+	  remembers where exactly in code it is going when we went to wait something. Note that
+	  only async word does not make method running in background type thing. It only allows to wait.
 
 How await works?
+	- This is the magic word that makes all the work. When code meets this line where is await,
+	  event is sent away. For example command is sent to database: "drive this MERGE clause and alert
+	  when you are ready". This returns Task-object, in other words promise for incoming result.
+	  Method is ended cleanly. Program does not get stuck on this row. Instead, method "stops" and
+	  gives current process thread free back to .NET's thread pool so that it can do something else
+	  meanwhile, like for example serve net page visitor or handle other information. When response
+	  arrives from database, .NET wakes up method again, often with free processing thread and continues
+	  running code exactly from where it left off so below await word.
+
+What is Task?
+	- Task means "event/quest" or promise of that something is going to happen in future.
+
+What are I/O operators?
+	- Asyncronous programming is most benefit from in I/O-operations (Network I/O, Database I/O,
+	  File I/O), where program needs to wait for network or hard disk responses.
+
+What is I/O?
 	- 
