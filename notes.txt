@@ -234,4 +234,20 @@ What are I/O operators?
 	  File I/O), where program needs to wait for network or hard disk responses.
 
 What is I/O?
+	- It comes from words Input / Output. It means situation where computer's processors (CPU) and
+	  fast central memory have to communicate to somewhere outside world or transfering data with
+	  slow physical machines. Why I/O is different than regular code? Processor is incredibly fast.
+	  It can do billions calculations in seconds. But instantly when it needs to find data over
+	  internet or write to hard disk, things slow down million times. Processor needs to wait,
+	  that slower components respond.
+
+Examples of I/O operations in my own project:
+	- I have built three I/O operations so far. Network I/O so network traffic meaning calling
+	  SOAP-API. My computer sends over internet request to other server and waits unti there comes
+	  an response. This takes time, milliseconds or seconds. Database I/O, database traffic. When
+	  I send MERGE-clause to SQL server and wait for responses. Database reads or writes from 
+	  it's hard disk data, which is for processor slow work. File I/O, disk operations. When
+	  Serilog writes integration_log.txt file to database.
+
+Why async/await would be fantastic here:
 	- 
