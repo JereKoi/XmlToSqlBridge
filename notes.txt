@@ -250,4 +250,6 @@ Examples of I/O operations in my own project:
 	  Serilog writes integration_log.txt file to database.
 
 Why async/await would be fantastic here:
-	- 
+	- For these operations above async/await is fantastic. Because I know that database call or
+	  SOAP-call takes time, I dont want to lock program's main thread to wait. Instead I free
+	  it up for other tasks for time when I/O-operation is doing it's job in background.

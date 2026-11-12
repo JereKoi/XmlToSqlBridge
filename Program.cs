@@ -4,7 +4,8 @@ using System.Xml.Linq;
 using Serilog;
 class Program
 {
-    static void Main(string[] args)
+    // Main becomes async Task so that I can use await commands.
+    static async Task Main(string[] args)
     {
         // Looad configuration from appsettings.json
         var configuration = new ConfigurationBuilder()
@@ -35,7 +36,7 @@ class Program
 
         // Opening connection to SQL server SMSS
         using var connection = new SqlConnection(connectionString);
-        connection.Open();
+        await connection.OpenAsync();
         Log.Information("Connection to SQL server was successful using appsettings.json!");
 
 
@@ -50,7 +51,7 @@ class Program
                 END";
         using (var createCommand = new SqlCommand(createTableSql, connection))
         {
-            createCommand.ExecuteNonQuery();
+            await createCommand.ExecuteNonQueryAsync();
         }
 
         // Parsing and saving
@@ -107,7 +108,7 @@ class Program
                     insertCommand.Parameters.AddWithValue("@id", id);
                     insertCommand.Parameters.AddWithValue("@name", name ?? (object)DBNull.Value);
                     insertCommand.Parameters.AddWithValue("@price", price);
-                    insertCommand.ExecuteNonQuery();
+                    await insertCommand.ExecuteNonQueryAsync();
                 }
                 Log.Information("Processing: Id={ProductId}, Name={ProductName}, Price={ProductPrice} €",
                                 id,
