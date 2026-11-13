@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using System.Xml.Linq;
 using Serilog;
+using Polly;
 class Program
 {
     // Main becomes async Task so that I can use await commands.
@@ -34,6 +35,13 @@ class Program
             return;
         }
 
+        var retryPolicy = Policy.Handle<SqlException>().WaitAndRetryAsync(3, attempt =>
+        TimeSpan.FromSeconds(2), (exception, timeSpan, attempt, context) =>
+        {
+        Log.Warning("Database error: '{ErrorMessage}'. Trying again ({Attempt}/3)...",
+        exception.Message, attempt);
+        });
+
         // Opening connection to SQL server SMSS
         using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();
@@ -51,7 +59,7 @@ class Program
                 END";
         using (var createCommand = new SqlCommand(createTableSql, connection))
         {
-            await createCommand.ExecuteNonQueryAsync();
+            await retryPolicy.ExecuteAsync(async () => await createCommand.ExecuteNonQueryAsync());
         }
 
         // Parsing and saving
@@ -108,7 +116,11 @@ class Program
                     insertCommand.Parameters.AddWithValue("@id", id);
                     insertCommand.Parameters.AddWithValue("@name", name ?? (object)DBNull.Value);
                     insertCommand.Parameters.AddWithValue("@price", price);
-                    await insertCommand.ExecuteNonQueryAsync();
+
+                    await retryPolicy.ExecuteAsync(async () =>
+                    {
+                        await insertCommand.ExecuteNonQueryAsync();
+                    });
                 }
                 Log.Information("Processing: Id={ProductId}, Name={ProductName}, Price={ProductPrice} €",
                                 id,

@@ -253,3 +253,56 @@ Why async/await would be fantastic here:
 	- For these operations above async/await is fantastic. Because I know that database call or
 	  SOAP-call takes time, I dont want to lock program's main thread to wait. Instead I free
 	  it up for other tasks for time when I/O-operation is doing it's job in background.
+
+What is Polly?
+	- Polly is .NET world's most popular and powerful library for resilience and error handling.
+	  Fault tolerance and resilience. With Polly, program can be taught smart plan Bs for situations
+	  where external system like database or SOAP-API makes momentary error or outtage.
+
+Why only try-catch and Rollback is not enough error handling?
+	- In my current code, if database connection to happen any small issue, for example network
+	  cuts for half second, program throws exception, calls Rollback and gives up immedietly.
+	  In real world, networks and servers blink sometimes. Momentary outtage does not mean that
+	  whole data processing should instantly be stopped. Often is enough that waiting for a moment
+	  is good and then try again.
+
+Important Polly terminology and what you can do with it?
+	- Polly offers different strategies: Retry (restart): If ran into error, try X times again.
+	  Wait and Retry: If rain into error, wait 2 seconds, try again, if fail, wait for 4 seconds and
+	  then try again second time. (This is often called Exponential Backoff-strategy, which gives
+	  server time to breathe).
+	  Circuit Breaker (sulake): If database is completely down and after 10 tries still runs into error,
+	  cut all power for whole 30 seconds and do not try to connect to take off the load of database
+	  or SOAP-API.
+
+How Polly benefits my project?
+	- When I send products to database, I can wrap that operation or only single command line inside
+	  Polly's Retry Policy. If during database saving happens momentary network outtage or deadlock,
+	  Polly:
+	  1. Graps error behind curtains.
+	  2. Waits for defined time, for example 2 seconds.
+	  3. Tries again automatically without program needing to crash or do rollback immediatly after
+	     first error.
+
+How to install Polly for project?
+	- Have to load it from NuGet package library. In code, I have to specify policy and run
+	  it through code.
+
+	  // What errors are reacted to, in this example is SQL-errors. Also here is defined
+	  that I try 3 times, wait for 2 seconds between each retry.
+
+	  var retryPolicy = Policy.Handle<SqlException>().WaitAndRetryAsync(3, retryAttempt => 
+	  TimeSpan.FromSeconds(2), (exception, timeSpan, retryCount, context) => {
+
+	  // Here you can add also Serilog, when retry happens.
+	  Log.Warning("Database connection was cut, trying again ({RetryCount}/3)...", retryCount);
+	  });
+
+	  // Perform operation through code
+	  await retryPolicy.ExecuteAsync(async () => {
+	  // below is code that might fail, for example ExecuteNonQueryAsync.
+		await insertCommand.ExecuteNonQueryAsync();
+	  });
+
+What I learned from adding Polly?
+	- 
