@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using System.Xml.Linq;
 using Serilog;
 using Polly;
+using Microsoft.Extensions.Logging;
 class Program
 {
     // Main becomes async Task so that I can use await commands.
@@ -32,8 +33,12 @@ class Program
             .WriteTo.File("logs/integration_log.txt", rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
+        builder.Logging.ClearProviders();
+        builder.Logging.AddSerilog();
+
         // Registering own ingration service to DI-container (Transient = creating whenever needed)
         // builder.Services.AddTransient<SoapIntegrationService>();
+        builder.Services.AddTransient<SoapIntegrationService>();
 
         var host = builder.Build();
 
@@ -42,30 +47,50 @@ class Program
 
         using (var scope = host.Services.CreateScope())
         {
-           // var processor = scope.ServiceProvider.GetRequiredService<SoapIntegrationService>();
-            // await processor.RunAsync();
+            var processor = scope.ServiceProvider.GetRequiredService<SoapIntegrationService>();
+            await processor.RunAsync();
         }
 
-        if (string.IsNullOrEmpty(connectionString))
+        Log.CloseAndFlush();
+    }
+}
+
+
+    public class SoapIntegrationService
+    {
+        private readonly IConfiguration _configuration;
+
+        // DI-container gives automatically Iconfiguration-object to here (Constructor injection)
+        public SoapIntegrationService(IConfiguration configuration)
         {
-            Log.Information("Error: Connection string did not find appsettings.json");
-            return;
+            _configuration = configuration;
         }
 
-        var retryPolicy = Policy.Handle<SqlException>().WaitAndRetryAsync(3, attempt =>
+        public async Task RunAsync()
+        {
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                Log.Error("Error: Connection string did not find appsettings.json");
+                return;
+            }
+
+            // Polly's retry rule
+            var retryPolicy = Policy.Handle<SqlException>().WaitAndRetryAsync(3, attempt =>
         TimeSpan.FromSeconds(2), (exception, timeSpan, attempt, context) =>
         {
-        Log.Warning("Database error: '{ErrorMessage}'. Trying again ({Attempt}/3)...",
-        exception.Message, attempt);
+            Log.Warning("Database error: '{ErrorMessage}'. Trying again ({Attempt}/3)...",
+            exception.Message, attempt);
         });
 
-        // Opening connection to SQL server SMSS
-        using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync();
-        Log.Information("Connection to SQL server was successful using appsettings.json!");
+            // Opening connection to SQL server SMSS
+            using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync();
+            Log.Information("Connection to SQL server was successful using appsettings.json!");
 
 
-        string createTableSql = @"
+            string createTableSql = @"
                 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Products')
                 BEGIN
                     CREATE TABLE Products (
@@ -74,91 +99,88 @@ class Program
                         Price INT
                     );
                 END";
-        using (var createCommand = new SqlCommand(createTableSql, connection))
-        {
-            await retryPolicy.ExecuteAsync(async () => await createCommand.ExecuteNonQueryAsync());
-        }
 
-        // Parsing and saving
+            using (var createCommand = new SqlCommand(createTableSql, connection))
+            {
+                await retryPolicy.ExecuteAsync(async () => await createCommand.ExecuteNonQueryAsync());
+            }
 
-        // Loads XML-file to memory
-        XDocument doc = XDocument.Load("soap_response.xml");
 
-        // Defines XML-namespaces, which are used on XML file
-        XNamespace ns = "http://tempuri.org/";
+            // Parsing and saving
 
-        // Searches for all <Product>-elements by namespace reference
-        var products = doc.Descendants(ns + "Product");
+            // Loads XML-file to memory
+            XDocument doc = XDocument.Load("soap_response.xml");
 
-        string insertSql = "MERGE INTO Products AS target USING (VALUES (@id, @name, @price)) AS " +
+            // Defines XML-namespaces, which are used on XML file
+            XNamespace ns = "http://tempuri.org/";
+
+            // Searches for all <Product>-elements by namespace reference
+            var products = doc.Descendants(ns + "Product");
+
+
+            string insertSql = "MERGE INTO Products AS target USING (VALUES (@id, @name, @price)) AS " +
             "source (Id, Name, Price) ON target.Id = source.Id WHEN MATCHED THEN UPDATE SET " +
             "target.Name = source.Name, target.Price = source.Price WHEN NOT MATCHED THEN " +
             "INSERT (Id, Name, Price) VALUES (source.Id, source.Name, source.Price);";
 
-        Log.Information("Parsing products from SOAP-response:\n");
+            Log.Information("Parsing products from SOAP-response:\n");
 
-        using var transaction = connection.BeginTransaction();
-        try
-        {
-            foreach (var p in products)
+            using var transaction = connection.BeginTransaction();
+            try
             {
-                // Checking if Id is existing and valid
-                var idElement = p.Element(ns + "Id");
-                var priceElement = p.Element(ns + "Price");
-                var nameElement = p.Element(ns + "Name");
-
-                // If Id is missing or is not number, throwing exception to trigger
-                // rollback of transcation.
-                if (idElement == null || !int.TryParse(idElement.Value, out int id))
+                foreach (var p in products)
                 {
-                    throw new Exception($"Error: Product is missing required id " +
-                        $"or id is faulty!");
-                }
+                    // Checking if Id is existing and valid
+                    var idElement = p.Element(ns + "Id");
+                    var priceElement = p.Element(ns + "Price");
+                    var nameElement = p.Element(ns + "Name");
 
-                if (priceElement == null || !int.TryParse(priceElement.Value, out int price))
-                {
-                    throw new Exception($"Error: Product {id} has faulty or missing price!");
-                }
-                if (nameElement == null || string.IsNullOrWhiteSpace(nameElement.Value))
-                {
-                    throw new Exception($"Error: Product {id} has faulty or missing name!");
-                }
-
-                string? name = nameElement?.Value;
-
-                using (var insertCommand = new SqlCommand(insertSql, connection))
-                {
-                    // Ties the commmand to transaction.
-                    insertCommand.Transaction = transaction;
-                    insertCommand.Parameters.AddWithValue("@id", id);
-                    insertCommand.Parameters.AddWithValue("@name", name ?? (object)DBNull.Value);
-                    insertCommand.Parameters.AddWithValue("@price", price);
-
-                    await retryPolicy.ExecuteAsync(async () =>
+                    // If Id is missing or is not number, throwing exception to trigger
+                    // rollback of transcation.
+                    if (idElement == null || !int.TryParse(idElement.Value, out int id))
                     {
-                        await insertCommand.ExecuteNonQueryAsync();
-                    });
+                        throw new Exception($"Error: Product is missing required id " +
+                            $"or id is faulty!");
+                    }
+
+                    if (priceElement == null || !int.TryParse(priceElement.Value, out int price))
+                    {
+                        throw new Exception($"Error: Product {id} has faulty or missing price!");
+                    }
+                    if (nameElement == null || string.IsNullOrWhiteSpace(nameElement.Value))
+                    {
+                        throw new Exception($"Error: Product {id} has faulty or missing name!");
+                    }
+
+                    string? name = nameElement?.Value;
+
+                    using (var insertCommand = new SqlCommand(insertSql, connection))
+                    {
+                        // Ties the commmand to transaction.
+                        insertCommand.Transaction = transaction;
+                        insertCommand.Parameters.AddWithValue("@id", id);
+                        insertCommand.Parameters.AddWithValue("@name", name ?? (object)DBNull.Value);
+                        insertCommand.Parameters.AddWithValue("@price", price);
+
+                        await retryPolicy.ExecuteAsync(async () =>
+                        {
+                            await insertCommand.ExecuteNonQueryAsync();
+                        });
+                    }
+                    Log.Information("Processing: Id={ProductId}, Name={ProductName}, Price={ProductPrice} €",
+                                    id,
+                                    name,
+                                    price);
                 }
-                Log.Information("Processing: Id={ProductId}, Name={ProductName}, Price={ProductPrice} €",
-                                id,
-                                name,
-                                price);
+                transaction.Commit();
+                Log.Information("\n All products are saved succesfully in transaction!");
             }
-            transaction.Commit();
-            Log.Information("\n All products are saved succesfully in transaction!");
+            catch (Exception ex)
+            {
+                // If something went wrong, rollback all changes at once!
+                transaction.Rollback();
+                Log.Information($"\nError during saving process, all changes are rolled back: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            // If something went wrong, rollback all changes at once!
-            transaction.Rollback();
-            Log.Information($"\nError during saving process, all changes are rolled back: {ex.Message}");
-        }
-        Log.CloseAndFlush();
     }
-
-    public class SoapIngegrationService
-    {
-
-    }
-}
         

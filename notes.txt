@@ -344,3 +344,30 @@ Service lifetimes in .NET
 	  connection for whole SOAP-batch time. (Soap käsittelyerän ajaksi).
 	  Singleton (For whole lifecycle of program): Creating only single object for whole program's lifecycle,
 	  which is shared between everyone. For example log-service or configuration.
+
+Tried to add Microsoft.Hosting package thorugh package manager, but got error:
+	- Warning As Error: Detected package downgrade: Microsoft.Extensions.Configuration.Binder 
+	  from 11.0.0 to 10.0.13. Reference the package directly from the project to 
+	  select a different version. To solve this issue need to update previously added packages.
+	  This can be done through package manager as well on updates tab. 
+	  After updating other packages, installing Microsoft.Hosting is succesfull. 
+	  NuGet stops error: NuGet package manager notices that I am accidentally downgrading 
+	  existing packages versions to older ones and because my project has on Warnings as Errors 
+	  (Warnings handled as errors), it stops installation completely. How to solve this 
+	  also it to also edit .csproj file and making sure all Microsoft.Extensions
+	  suffix packages and Microsoft.Extenstions.Hostin are pointing to exact same version so in
+	  this case 11.0.0. After editing .csproj, need to run this command on command line:
+	  dotnet restore. This command makes Nuget packages to load correct versions and any
+	  controversies between versions are solved.
+
+'ILoggingBuilder' does not contain a definition for 'AddSerilog' and no accessible extension method 
+'AddSerilog' accepting a first argument of type 'ILoggingBuilder' could be found 
+(are you missing a using directive or an assembly reference?):
+	- This is very common and easy momenbt to learn more of .NET and Serilog's cowork.
+	  So why this error is happening? .NET's own ILoggingBuilder-API does not have by default
+	  support for Serilog. To make .NET read and work with Serilog as part of normal log system,
+	  builder.Logging.AddSerilog(), project needs adapter package called Serilog.Extensions.Hosting.
+	  To fix this issue, I can install this from NuGet manager. So searching for Serilog.Extensions.Hosting.
+	  Or faster way to install this is following command on command line: dotnet add package Serilog.
+	  Extensions.Hosting. When installed, can also just in case run dotnet restore on command line and 
+	  error disappears.
