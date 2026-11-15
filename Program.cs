@@ -1,5 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System.Xml.Linq;
 using Serilog;
 using Polly;
@@ -8,6 +10,9 @@ class Program
     // Main becomes async Task so that I can use await commands.
     static async Task Main(string[] args)
     {
+        // Creating Generic host, which controls DI-container, configurations and log.
+        var builder = Host.CreateApplicationBuilder(args);
+
         // Looad configuration from appsettings.json
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
@@ -27,7 +32,19 @@ class Program
             .WriteTo.File("logs/integration_log.txt", rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
+        // Registering own ingration service to DI-container (Transient = creating whenever needed)
+        // builder.Services.AddTransient<SoapIntegrationService>();
 
+        var host = builder.Build();
+
+        // Requesting DI-container to give me ready integration service and performing it
+        Log.Information("Program is launching through DI-container...");
+
+        using (var scope = host.Services.CreateScope())
+        {
+           // var processor = scope.ServiceProvider.GetRequiredService<SoapIntegrationService>();
+            // await processor.RunAsync();
+        }
 
         if (string.IsNullOrEmpty(connectionString))
         {
@@ -137,6 +154,11 @@ class Program
             Log.Information($"\nError during saving process, all changes are rolled back: {ex.Message}");
         }
         Log.CloseAndFlush();
+    }
+
+    public class SoapIngegrationService
+    {
+
     }
 }
         

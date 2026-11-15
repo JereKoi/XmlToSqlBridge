@@ -305,4 +305,42 @@ How to install Polly for project?
 	  });
 
 What I learned from adding Polly?
-	- 
+	- Resilience/Fault tolerance: Programs cannot crash or stop at first network or database
+	  fault. 
+	  Handle<SqlException>(): I tell Polly that it looks specifically for SQL-world errors
+	  such as connection outtages or locks and does not look for example program's own exception errors,
+	  like missing ID on XML-data.
+	  Automatic retry (onRetry): With Polly, I can get immediatly info to log if some connection try
+	  needs to be made again, this helps a lot production troubleshooting.
+
+Dependency Injection / DI:
+	- Imagine cook of restaurant. Old way (new command): Everytime I need an oven, pan or knife,
+	  I build them from nothing on the spot (new oven(), new knife()). If an oven goes broken or
+	  want to change them to better, you have to tear apart whole kitchen again.
+	  Dependency Injection (DI): Outside entity enters the kitchen (In this case .NET's DI-bank),
+	  which brings / injects already made tools for you to your hand when you enter the kitchen.
+	  Cook (Code) does not need to know, how oven was build, it just needs to work.
+	  In technically speaking: Instead of my class code creating objects with new-command, program's
+	  framework creates and delivers needed pieces there where they are needed.
+
+Why old way is problematic in larger enterprise programs?
+	- Tight Coupling (Tiukka sidonnaisuus): If my code creates straight away new SqlConnection() or
+	  new MyLogger(), classes are glued together.
+	  Impossible to test: If I want to write for my code automatic test case, I dont want that test
+	  needs to actually perform database query or write to disk. with Dependency injection I can "fool"
+	  and give test mock, which is impossible if code uses new-command.
+
+How .NET's DI-bank/container works?
+	- In modern .NET-program, there is inbuilt container/storage for dependency injections.
+	  Registration: Program at the start tells .NET: "Here are classes and services that our
+	  program needs". Resolution: When program needs specific class, .NET looks what it requires and 
+	  builds it aoutomatically in background and takes it then into use.
+
+Service lifetimes in .NET
+	- When I register objects into DI-bank/container, I tell at the same time how long object may live.
+	  Transient (kertakäyttöinen): Always creating a new object whenever it is requested. This is most
+	  used and safest for light services.
+	  Scoped (Pyynnön elinkaari): Creating one object for operation or request. For example one database
+	  connection for whole SOAP-batch time. (Soap käsittelyerän ajaksi).
+	  Singleton (For whole lifecycle of program): Creating only single object for whole program's lifecycle,
+	  which is shared between everyone. For example log-service or configuration.
