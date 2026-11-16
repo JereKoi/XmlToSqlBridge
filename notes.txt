@@ -323,6 +323,26 @@ Dependency Injection / DI:
 	  In technically speaking: Instead of my class code creating objects with new-command, program's
 	  framework creates and delivers needed pieces there where they are needed.
 
+How dependency injection works?
+	- Dependency injection injects dependencies under hood. This is one of corner stones of programming
+	  architecture. When I realise this fully, my code structure will transform many steps ahead and
+	  become more professional. What problem DI solves, how it works step by step and how it shows
+	  in my own project/program:
+	  1. Main idea: "Dont call us, we call you". This is called Inversion of Control (IoC)-methology in
+	  programming. (Kontrollin k‰‰nt‰minen).
+	  Without DI (oldschool way): Class is itself responsible for its tools. If SoapIntegrationService
+	  needs configuration, it creates it on its own with new-word. Class is like a construction worker,
+	  who needs to dig iron and create an hammer of it before he can hit nail to a wall.
+	  With DI: Class only alerts it's needs, usually in it's constructor: "Hey, for me to function,
+	  I need IConfiguration-object in order for me to function properly and also ILogger-object". I
+	  don't care how they are done, only care that they are given to me.
+
+How .NET's DI-container/Service container works? (3 steps):
+	- I imagine .NET's DI-container as smart storage. It works always in three clear steps:
+	  1. Registration ("shoplist"). When program boots up (Program.cs) I am telling DI-container
+	  what classes and APIs are existing in my program. Like this:
+	  builder.Services.AddTransient<SoapIntegrationService>();
+
 Why old way is problematic in larger enterprise programs?
 	- Tight Coupling (Tiukka sidonnaisuus): If my code creates straight away new SqlConnection() or
 	  new MyLogger(), classes are glued together.
