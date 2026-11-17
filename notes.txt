@@ -342,6 +342,22 @@ How .NET's DI-container/Service container works? (3 steps):
 	  1. Registration ("shoplist"). When program boots up (Program.cs) I am telling DI-container
 	  what classes and APIs are existing in my program. Like this:
 	  builder.Services.AddTransient<SoapIntegrationService>();
+	  In this step no objects are yet created. Container only writes recipe to memory: "If someone
+	  later asks SoapIntegrationService-class, I know that it does exist".
+	  2. dependency resolution (Reading recipies)
+	- When program asks for object from DI-container:
+	  var processor = scope.ServiceProvider.GetRequiredService<SoapIntegrationService>();
+	  Container does at the background chain reaction:
+	  1. It checks SoapIntegrationService-class' constructor: "Okay, this requires IConfiguration-object".
+	  2. It checks from it's own container: "Do I have IConfiguration? Yeah I do, Generic Host
+	  created it automatically".
+	  3. If IConfiguration would require some additional third object, container would create that
+	  also first.
+	  4. At the end, container calls on by behalf new SoapIntegrationService(configuration) and hands
+	  ready object for me.
+	  Here ends the container background chain reaction events.
+	  3. Disposal (cleaning dishes):
+	- 
 
 Why old way is problematic in larger enterprise programs?
 	- Tight Coupling (Tiukka sidonnaisuus): If my code creates straight away new SqlConnection() or
