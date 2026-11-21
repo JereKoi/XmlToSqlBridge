@@ -357,7 +357,40 @@ How .NET's DI-container/Service container works? (3 steps):
 	  ready object for me.
 	  Here ends the container background chain reaction events.
 	  3. Disposal (cleaning dishes):
-	- 
+	- This is major advantage, which is forgotten by many. It creates object, which is responsible for
+	  destroying it. Due to DI-container creating object for you, it also needs to keep track of them.
+	  When row using (var scope = ...) ends, DI-container calls automatically Dispose()-method for all
+	  objects it has created, like database connections or file hooks, which perform IDisposable-API.
+	  Memory leaks are not appearing.
+
+Why interfaces (I-suffix types) are dependency Inejction's best friend?
+	- I noticed that in constructor there was IConfiguration and not directly ConfigurationRoot.
+	  Why there is I in front (Interface)?
+	- Interface is like power socket on the wall:
+	  Power socket defines a rule: Here goes two spiked power cable and here comes 230 volts of power.
+	  Behind the wall there can come power from nuclear plant, solar panel or back up generator.
+	  My coffee machine does not know and does not care where it comes from, it only cares that it gets
+	  power.
+	  In my code this means that in production, IConfiguration reads data from right appsettings.json-file.
+	  In automatic testing I can enter to SoapIntegrationService class mock configurations such as
+	  in memory mock database's address without touching any code row in actual service class.
+
+How my project benefits from Dependency injection?
+	- Currently my single service SoapIntegrationService does everything. When program grows, DI
+	  gets to show its true power when I make responsibilities into smaller parts:
+	  ISoapClient: Class which only responsibility is to retrieve XML-data from web.
+	  IProductRepository: Class which only responsibility is to save products to SQL-database
+	  and where Polly also lives.
+	  SoapIntegrationService: is the maestro, which requests from DI both two above in it's constructor,
+	  retrieves data from first one and passes that data to second one.
+
+DI in nutshell:
+	- DI Container: Factory taht builds objects on my behalf.
+	  Constructor Injection: A way where class asks fro its tools (parameters in constructor).
+	  Service Lifetime (Elinkaari): Transient (always new), Scoped (single per job run), Singleton
+	  (one for whole program).
+	  Loose Coupling (Löysä sidonnaisuus): Classes depend on interfaces (I...) and not directly to
+	  how each of them are implemented.
 
 Why old way is problematic in larger enterprise programs?
 	- Tight Coupling (Tiukka sidonnaisuus): If my code creates straight away new SqlConnection() or
