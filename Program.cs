@@ -2,16 +2,19 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Xml.Linq;
 using Serilog;
 using Polly;
-using Microsoft.Extensions.Logging;
+
 class Program
 {
     // Main becomes async Task so that I can use await commands.
     static async Task Main(string[] args)
     {
         // Creating Generic host, which controls DI-container, configurations and log.
+        // Reads appsettings.json automatically.
         var builder = Host.CreateApplicationBuilder(args);
 
         // Looad configuration from appsettings.json
@@ -38,7 +41,7 @@ class Program
 
         // Registering own ingration service to DI-container (Transient = creating whenever needed)
         // builder.Services.AddTransient<SoapIntegrationService>();
-        builder.Services.AddTransient<SoapIntegrationService>();
+        builder.Services.AddTransient<ISoapIntegrationService, SoapIntegrationService>();
 
         var host = builder.Build();
 
@@ -47,7 +50,7 @@ class Program
 
         using (var scope = host.Services.CreateScope())
         {
-            var processor = scope.ServiceProvider.GetRequiredService<SoapIntegrationService>();
+            var processor = scope.ServiceProvider.GetRequiredService<ISoapIntegrationService>();
             await processor.RunAsync();
         }
 
@@ -55,15 +58,35 @@ class Program
     }
 }
 
+public interface ISoapIntegrationService
+{
+    Task RunAsync();
+}
 
-    public class SoapIntegrationService
+public class IntegrationSettings
+{
+    public const string SectionName = "IntegrationSettings";
+
+    public string XmlFilePath { get; set; } = "soap_response.xml";
+    public string XmlNamespace { get; set; } = "http://tempuri.org/";
+    public int RetryCount { get; set; } = 3;
+    public int RetryDelaySeconds { get; set; } = 2;
+}
+
+    public class SoapIntegrationService : ISoapIntegrationService
     {
         private readonly IConfiguration _configuration;
+        private readonly ILogger<SoapIntegrationService> _logger;
+        private readonly IntegrationSettings _settings;
 
         // DI-container gives automatically Iconfiguration-object to here (Constructor injection)
-        public SoapIntegrationService(IConfiguration configuration)
+        public SoapIntegrationService(IConfiguration configuration,
+                                      ILogger<SoapIntegrationService> logger,
+                                      IOptions<IntegrationSettings> options)
         {
             _configuration = configuration;
+            _logger = logger;
+        _settings = options.Value;
         }
 
         public async Task RunAsync()
@@ -72,7 +95,7 @@ class Program
 
             if (string.IsNullOrEmpty(connectionString))
             {
-                Log.Error("Error: Connection string did not find appsettings.json");
+                _logger.LogWarning("Error: Connection string did not find appsettings.json");
                 return;
             }
 
@@ -80,7 +103,7 @@ class Program
             var retryPolicy = Policy.Handle<SqlException>().WaitAndRetryAsync(3, attempt =>
         TimeSpan.FromSeconds(2), (exception, timeSpan, attempt, context) =>
         {
-            Log.Warning("Database error: '{ErrorMessage}'. Trying again ({Attempt}/3)...",
+            _logger.LogWarning("Database error: '{ErrorMessage}'. Trying again ({Attempt}/3)...",
             exception.Message, attempt);
         });
 
@@ -106,13 +129,9 @@ class Program
             }
 
 
-            // Parsing and saving
-
-            // Loads XML-file to memory
-            XDocument doc = XDocument.Load("soap_response.xml");
-
-            // Defines XML-namespaces, which are used on XML file
-            XNamespace ns = "http://tempuri.org/";
+        _logger.LogInformation("Loading XML-file from path: {XmlPath}", _settings.XmlFilePath);
+        XDocument doc = XDocument.Load(_settings.XmlFilePath);
+        XNamespace ns = _settings.XmlNamespace;
 
             // Searches for all <Product>-elements by namespace reference
             var products = doc.Descendants(ns + "Product");
@@ -123,7 +142,7 @@ class Program
             "target.Name = source.Name, target.Price = source.Price WHEN NOT MATCHED THEN " +
             "INSERT (Id, Name, Price) VALUES (source.Id, source.Name, source.Price);";
 
-            Log.Information("Parsing products from SOAP-response:\n");
+            _logger.LogInformation("Parsing products from SOAP-response:\n");
 
             using var transaction = connection.BeginTransaction();
             try
@@ -167,19 +186,19 @@ class Program
                             await insertCommand.ExecuteNonQueryAsync();
                         });
                     }
-                    Log.Information("Processing: Id={ProductId}, Name={ProductName}, Price={ProductPrice} €",
+                    _logger.LogInformation("Processing: Id={ProductId}, Name={ProductName}, Price={ProductPrice} €",
                                     id,
                                     name,
                                     price);
                 }
                 transaction.Commit();
-                Log.Information("\n All products are saved succesfully in transaction!");
+                _logger.LogInformation("\n All products are saved succesfully in transaction!");
             }
             catch (Exception ex)
             {
                 // If something went wrong, rollback all changes at once!
                 transaction.Rollback();
-                Log.Information($"\nError during saving process, all changes are rolled back: {ex.Message}");
+                _logger.LogInformation($"\nError during saving process, all changes are rolled back: {ex.Message}");
             }
         }
     }

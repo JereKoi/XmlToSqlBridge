@@ -339,11 +339,13 @@ How dependency injection works?
 
 How .NET's DI-container/Service container works? (3 steps):
 	- I imagine .NET's DI-container as smart storage. It works always in three clear steps:
+
 	  1. Registration ("shoplist"). When program boots up (Program.cs) I am telling DI-container
 	  what classes and APIs are existing in my program. Like this:
 	  builder.Services.AddTransient<SoapIntegrationService>();
 	  In this step no objects are yet created. Container only writes recipe to memory: "If someone
 	  later asks SoapIntegrationService-class, I know that it does exist".
+
 	  2. dependency resolution (Reading recipies)
 	- When program asks for object from DI-container:
 	  var processor = scope.ServiceProvider.GetRequiredService<SoapIntegrationService>();
@@ -356,6 +358,7 @@ How .NET's DI-container/Service container works? (3 steps):
 	  4. At the end, container calls on by behalf new SoapIntegrationService(configuration) and hands
 	  ready object for me.
 	  Here ends the container background chain reaction events.
+
 	  3. Disposal (cleaning dishes):
 	- This is major advantage, which is forgotten by many. It creates object, which is responsible for
 	  destroying it. Due to DI-container creating object for you, it also needs to keep track of them.
@@ -405,7 +408,7 @@ How .NET's DI-bank/container works?
 	  program needs". Resolution: When program needs specific class, .NET looks what it requires and 
 	  builds it aoutomatically in background and takes it then into use.
 
-Service lifetimes in .NET
+Service lifetimes in .NET:
 	- When I register objects into DI-bank/container, I tell at the same time how long object may live.
 	  Transient (kertakäyttöinen): Always creating a new object whenever it is requested. This is most
 	  used and safest for light services.
@@ -440,3 +443,58 @@ Tried to add Microsoft.Hosting package thorugh package manager, but got error:
 	  Or faster way to install this is following command on command line: dotnet add package Serilog.
 	  Extensions.Hosting. When installed, can also just in case run dotnet restore on command line and 
 	  error disappears.
+
+Three important notes of my DI implementation:
+	- 1. Program automatically loads appsettings.json with 
+	  appsettings.sjon : Host.CreateApplicationBuilder(args) without me to write any line such as:
+	  new ConfigurationBuilder()... by hand.
+	  2. Class name in log. When I use ILogger<SoapIntegrationService>, Serilog gets automatically
+	  information of what class sent log text (SourceContext). In big projects this saves so much
+	  time from debugging and troubleshooting.
+	  3. No more new commands to services. Program.cs does no longer new SoapIntegrationService(...).
+	  If I add later third or fourth dependency, Program.cs does not need to be edited at all.
+
+Strongly typed settings (IOptions<T> Pattern)
+	- 1. What is wrong with old magic strings?
+	  So far I have only read settings through IConfiguration using string keys.
+	  string? connectionString = _configuration.GetconnectionString("DefaultConnection");
+	  string logPath = _configuration["Logging:LogPath"];
+	  In programming this is called magic string and there is three big flaws:
+	  typos: If I write accidentally Logging:LogPth, converter does not notice typo. Program
+	  converts cleanly but during run there appears to be null or default value.
+	  2. No automatical filling (IntelliSense). Code editor cannot do suggestions based on what settings
+	  appsettings.json does have.
+	  3. Filetype changing by hand. If I want for example to read Polly's reload count (RetryCount: 3),
+	  I have to read it's string and change it myself with int.Parse(...) command.
+	  
+	  Solution: Options Pattern, IOptions<T>:
+	  Options pattern means that appsettings.json file's sections are set as normal C# classes,
+	  so called POCO-classes, Plain Old CLR Objects. .NET binds JSON-file's values automatically
+	  to C#-class' properties and gives ready made class to my program through dependency injection.
+      
+	  How does it work in three steps?
+	- 1. Settings class: I create C#-class which functions names match appsettings.json file's
+	  keys, for example IntegrationSettings.
+	  2. Registering to DI-container: In Program.cs file we tell .NET which part of JSON file belongs
+	  to this class:
+	  builder.Services.Configure<IntegrationSettings>(builder.Configuration.
+	  GetSection("IntegrationSettings"));
+	  3. Use on service calss: Service class does no longer request in it's constructor whole heavy
+	  IConfiguration-class, but only what is necessary for it's settingclass IOptions<IntegrationSettings>
+	  wrap. To access values, need to use .Value, for example _settings.RetryCount.
+
+Three different Options-interfaces (Good to know for future)
+	- .NET provides three different ways to read settings in different situations:
+	  IOptions<T> (Singleton): Reads settings once when program starts up. Fastest and lightest,
+	  perfect for console programs, which are performed from beginning to the end.
+	  IOptionsSnapshot<T> (Scoped): Reads settings again at beginning of each Scope (työskentelykierros)
+	  if appsettings.json file is edited on the fly/while program is running.
+	  IOptionsMonitor<T> (Singleton + Realtime): Follows file's changes in realtime and updates
+	  values in realtime without program needing to restart.
+
+Why this is in architecturally speaking so fantastic? (Interface Segregation)
+	- When SoapIntegrationService asks for IConfiguration-interface instead of only
+	  IOptions<IntegrationSettings>, it follows SOLID-principles I-letter (Interface Segregation
+	  Principle). Class gets to its use only those settings, which it really needs and does not get
+	  access to whole settings and configurations of program. Additionally unit test writing gets
+	  a lot easier.
