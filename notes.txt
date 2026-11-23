@@ -498,3 +498,41 @@ Why this is in architecturally speaking so fantastic? (Interface Segregation)
 	  Principle). Class gets to its use only those settings, which it really needs and does not get
 	  access to whole settings and configurations of program. Additionally unit test writing gets
 	  a lot easier.
+
+'IOptions<IntegrationSettings>' does not contain a definition for 'value' and no accessible 
+extension method 'value' accepting a first argument of type 'IOptions<IntegrationSettings>' could 
+be found (are you missing a using directive or an assembly reference?)
+
+The type or namespace name 'IntegrationSettings' could not be found 
+(are you missing a using directive or an assembly reference?)
+
+	- These are both classic problems and really good to teach C# converter errors. Let's break down
+	  both of them. Error 1. Capital and lower case character (options.value vs options.Value)
+	  'IOptions<IntegrationSettings>' does not contain a definition for 'value'.
+	  Why this appears? C# is case-sensitive language. IOptions<T> -interface option starts with capital
+	  V-character, not value. Changing it to _settings = options.Value; is correct.
+	  Error 2. Class is missing or is in wrong namespace (meaning IntegrationSettings)
+	  The type or namespace name 'IntegrationSettings' could not be found.
+	  Where does this error comes from? Converter does not yet know IntegrationSettings-class. There
+	  is usually two possible reasons:
+	  1. Class is not yet created anywhere in program.
+	  2. Different namespace. If I created class to it's own file, for example IntegrationSettings.cs,
+	  it may have different namespace than what SoapIntegrationService has. Other one has namespace,
+	  other does not.
+	  
+	  Fix for this is to make sure I have created this class either in same file at the bottom or
+	  to it's own file and into same namespace where SoapIntegrationService is.
+
+	  public class IntegrationSettings
+	  {
+	  public const string SectionName = "IntegrationSettings";
+
+	  public string XmlFilePath { get; set; } = "soap_response.xml";
+	  public string XmlNamespace { get; set; } = "http://tempuri.org/";
+	  public int RetryCount { get; set; } = 3;
+	  public int RetryDelaySeconds { get; set; } = 2;
+	  }
+
+	  Tip: if Visaul studio underscores by red IntegrationSettings after I have created class,
+	  I can click word and press Ctrl + . and Visual studio will suggest automatically right using-row
+	  addition to file's upper corner.
