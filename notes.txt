@@ -536,3 +536,20 @@ The type or namespace name 'IntegrationSettings' could not be found
 	  Tip: if Visaul studio underscores by red IntegrationSettings after I have created class,
 	  I can click word and press Ctrl + . and Visual studio will suggest automatically right using-row
 	  addition to file's upper corner.
+
+Why do we need to write them into code, did we not need to do typing to appsettings.json file?
+	- This is excellent question and explains perfectly how Options Pattern works behind the curtains.
+	  Short answer is: yes, we set values into appsettings.json file, but I need also to company it
+	  C# class (IntegrationSettings) kind of like for mould or as an guiding star.
+	  Why we need both? Imagine that appsettings.json is raw textfile JSON and C# code is strictly
+	  typed program. They dont know each other right away. We need two pieces which connect them
+	  together. We need two pieces which is to be connected:
+	  appsettings.sjon (Data / actual values):
+	  It is actual text file which maintainer can edit without running code.
+	  IntegrationSettings.cs (C#-class / mould):
+	  This is pure C# code. It tells to C#-converter which shape of mould that JSON-block is and what
+	  types of values there is (string, int for example). Without this C#-class converter cannot know
+	  that RetryCount is wholenumber (int) and XmlFilePath is string. In class values = 3, = "soap_
+	  response.xml" are only safetynets for cases where some row would be missing from appsettings.json
+	  file.
+	  How these two connect?
