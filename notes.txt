@@ -553,3 +553,39 @@ Why do we need to write them into code, did we not need to do typing to appsetti
 	  response.xml" are only safetynets for cases where some row would be missing from appsettings.json
 	  file.
 	  How these two connect?
+	- When program starts from Program.cs, this row works as glue between appsettings.json and 
+	  integrationSettings: builder.Services.Configure<IntegrationSettings>(builder.Configuration.
+	  GetSection("IntegrationSettings"));
+	  That row tells to .NET: read from appsettings.json "IntegrationSettings" block, give
+	  those values to C# class named IntegrationSettings (mould) and give ready C#-object to
+	  SoapIntegrationService-class.
+	  So appsettings.json has actual settings in JSON format. IntegrationSettings in C# file
+	  defines settings structure and datatypes to C# code.
+	  When I keep JSON-settings in appsettings.json and public class IntegrationSettings code in
+	  C# file or in it's own IntegrationSettings file, both understand each other.
+
+	  What is unit testing?
+	- Unit test is small, automatic C# method which test one small isolated piece of my code, for example
+	  one method's XML parsing or validation logic.
+	  Golden rule: Unite test CANNOT touch real database, file system (hard disk) or to network (
+	  real SOAP-interface). It needs to work completely in memory in milliseconds, whereever 
+	  and whenever.
+
+	- What are xUnit and Moq?
+	  xUnit: xUnit is the most popular test framework in .NET. It gives tools to mark tests, like this:
+	  [Fact], [Theory] and it can also inspect results, Assert.Equal(...), Assert.Throws(...)
+	  Moq (said Mock): Library that is used to create mock objects of interfaces. On upper I typed of 
+	  power outlet example. Moq kind of works as fake power outlet. It presents itself as for example
+	  database or logger (ILogger), so that class that is tested does not notice any difference and
+	  does not crash for missing external services.
+
+	- Test's three piece structure: AAA-model:
+	  Nearly every professional like unit test in the world is written using three steps:
+	  1. Arrange (Prepare): Creating test data for example faulty XML-string, setting mocks and creating
+	  class to test.
+	  2. Act (perform): Calling main method, which I want to test.
+	  3. Assert (ensure): Checking with Assert-command that result is expected. For example
+	  method returned two products or it threw exception for missing price.
+
+	- Why code need often to break into pieces for testing? (refactoring)
+	  
